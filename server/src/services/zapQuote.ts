@@ -19,10 +19,10 @@ export interface ZapQuoteResult {
   source: "router_simulation" | "fallback_rate";
   slippageApplied: number;
   amountOutAfterSlippage: string;
-  quotedAt: string;
-  minAmountOutStroops: string;
-  quoteAgeMs: number;
-  isFallback: boolean;
+  quotedAt?: string;
+  minAmountOutStroops?: string;
+  quoteAgeMs?: number;
+  isFallback?: boolean;
 }
 
 const rpcUrl = process.env.SOROBAN_RPC_URL ?? "https://soroban-testnet.stellar.org";
@@ -181,7 +181,7 @@ export async function getZapQuote(body: ZapQuoteBody): Promise<ZapQuoteResult> {
   const outAfterSlippage = (expectedOut * BigInt(Math.floor(multiplier * 10000))) / BigInt(10000);
 
   const now = Date.now();
-  const quoteAgeMs = new Date(quotedAt).getTime();
+  const quotedAtMs = new Date(quotedAt).getTime();
 
   return {
     ...sim,
@@ -189,7 +189,7 @@ export async function getZapQuote(body: ZapQuoteBody): Promise<ZapQuoteResult> {
     amountOutAfterSlippage: outAfterSlippage.toString(),
     minAmountOutStroops: outAfterSlippage.toString(),
     quotedAt,
-    quoteAgeMs: now - quoteAgeMs,
+    quoteAgeMs: now - quotedAtMs,
     isFallback: sim.source === "fallback_rate",
   };
 }
