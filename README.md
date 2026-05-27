@@ -57,6 +57,8 @@ The backend runs on `http://localhost:3001`.
 The example env files document required and optional values. Keep real secrets
 out of git; frontend values must be public `VITE_` values only.
 
+The backend also performs startup environment validation (warnings in development, errors in production). For CI-parity examples of **minimum env vars for backend tests** (including `DATABASE_URL`) and common validation failures, see [docs/backend_testing.md](./docs/backend_testing.md).
+
 For the **full list of `VITE_` variables the client reads** — including required values, contract IDs, optional integrations, and a production deployment checklist — see [docs/frontend-env-reference.md](./docs/frontend-env-reference.md).
 
 ### API Documentation
