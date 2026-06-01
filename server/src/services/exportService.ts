@@ -1,8 +1,7 @@
-import { PROTOCOLS, ProtocolConfig } from "../config/protocols";
+import { PROTOCOLS } from "../config/protocols";
 import { 
   rankStrategies, 
-  computeRiskAdjustedYield,
-  StrategyInput
+  type StrategyInput
 } from "./riskAdjustedYieldService";
 import { yieldReliabilityEngine } from "./yieldReliabilityService";
 import { 
@@ -15,12 +14,14 @@ import {
 } from "./confidenceService";
 
 export interface SnapshotBundle {
-  timestamp: string;
-  version: string;
+  generatedAt: string;
+  appVersion: string;
   opportunities: OpportunitySnapshot[];
   metadata: {
     totalOpportunities: number;
     scoringMethodology: string;
+    sourceFreshness: number;
+    filtersApplied: Record<string, any>;
   };
 }
 
@@ -60,7 +61,7 @@ export class ExportService {
    * Generates a full snapshot bundle of current opportunity data.
    * Excludes secrets and internal-only metadata.
    */
-  async generateSnapshotBundle(): Promise<SnapshotBundle> {
+  async generateSnapshotBundle(filters: Record<string, any> = {}): Promise<SnapshotBundle> {
     const now = new Date();
     const isoNow = now.toISOString();
 
@@ -128,13 +129,19 @@ export class ExportService {
       };
     });
 
+    const avgFreshness = snapshots.length > 0
+      ? snapshots.reduce((acc, s) => acc + s.reliability.freshness, 0) / snapshots.length
+      : 0;
+
     return {
-      timestamp: isoNow,
-      version: "1.0.0",
+      generatedAt: isoNow,
+      appVersion: "1.0.0",
       opportunities: snapshots,
       metadata: {
         totalOpportunities: snapshots.length,
         scoringMethodology: "RAY = APY * (riskScore / 10) * drawdownMultiplier / (1 + drawdownProxy)",
+        sourceFreshness: Math.round(avgFreshness * 100) / 100,
+        filtersApplied: filters,
       },
     };
   }

@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from "react";
-import { Trophy, Medal, TrendingUp, Filter } from "lucide-react";
+import { Trophy, Medal, TrendingUp, Filter, AlertCircle, RefreshCw, BarChart3, RotateCcw } from "lucide-react";
 import { apiUrl } from "../../lib/api";
 import { ConfidenceBadge } from "../../components/AIAdvisor/ConfidenceBadge";
+import {
+  useLeaderboardFilters,
+  TIME_WINDOWS,
+  STRATEGY_TYPES,
+} from "../../hooks/useLeaderboardFilters";
 
 interface RankedStrategy {
   rank: number;
@@ -22,14 +27,19 @@ interface LeaderboardResponse {
   scoringMethodology: string;
 }
 
-const TIME_WINDOWS = ["all", "24h", "7d", "30d"] as const;
-const STRATEGY_TYPES = ["all", "blend", "soroswap", "defindex"] as const;
-
 const StrategyLeaderboard: React.FC = () => {
   const [data, setData] = useState<LeaderboardResponse | null>(null);
   const [loading, setLoading] = useState(true);
-  const [timeWindow, setTimeWindow] = useState<string>("all");
-  const [strategyType, setStrategyType] = useState<string>("all");
+  const [error, setError] = useState<string | null>(null);
+
+  const {
+    timeWindow,
+    strategyType,
+    setTimeWindow,
+    setStrategyType,
+    resetFilters,
+    isDefault,
+  } = useLeaderboardFilters();
 
   // #375 Rotation Confidence Explorer
   const [rotationData, setRotationData] = useState<{
@@ -50,19 +60,30 @@ const StrategyLeaderboard: React.FC = () => {
   const [rotationLoading, setRotationLoading] = useState(true);
   const [rotationError, setRotationError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchLeaderboard = () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ timeWindow, strategyType });
     fetch(apiUrl(`/api/strategies/leaderboard?${params}`))
-      .then((res) => res.json())
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}: ${res.statusText}`);
+        }
+        return res.json();
+      })
       .then((d: LeaderboardResponse) => {
         setData(d);
         setLoading(false);
       })
       .catch((err) => {
         console.error("Failed to fetch strategy leaderboard", err);
+        setError(err instanceof Error ? err.message : "Failed to load strategy leaderboard");
         setLoading(false);
       });
+  };
+
+  useEffect(() => {
+    fetchLeaderboard();
   }, [timeWindow, strategyType]);
 
   useEffect(() => {
@@ -137,11 +158,47 @@ const StrategyLeaderboard: React.FC = () => {
             </button>
           ))}
         </div>
+        {!isDefault && (
+          <button
+            onClick={resetFilters}
+            className="ml-auto flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold text-gray-400 hover:text-white bg-white/5 hover:bg-white/10 transition-colors"
+            title="Reset filters to defaults"
+          >
+            <RotateCcw size={12} />
+            Reset
+          </button>
+        )}
       </div>
 
       {loading ? (
-        <div className="flex justify-center items-center h-48">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500" />
+        <div className="glass-panel p-12 flex flex-col items-center justify-center space-y-4">
+          <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-indigo-500" />
+          <p className="text-gray-400 text-sm">Loading strategy rankings...</p>
+        </div>
+      ) : error ? (
+        <div className="glass-panel p-12 flex flex-col items-center justify-center space-y-4 border border-red-500/30">
+          <AlertCircle className="text-red-400" size={48} />
+          <div className="text-center space-y-2">
+            <h3 className="text-xl font-bold text-white">Failed to Load Strategies</h3>
+            <p className="text-gray-400 text-sm max-w-md">{error}</p>
+          </div>
+          <button
+            onClick={fetchLeaderboard}
+            className="flex items-center gap-2 px-6 py-3 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold rounded-lg transition-colors"
+          >
+            <RefreshCw size={16} />
+            Retry
+          </button>
+        </div>
+      ) : (data?.items ?? []).length === 0 ? (
+        <div className="glass-panel p-12 flex flex-col items-center justify-center space-y-4">
+          <BarChart3 className="text-gray-500" size={64} />
+          <div className="text-center space-y-2">
+            <h3 className="text-xl font-bold text-white">No Strategies Found</h3>
+            <p className="text-gray-400 text-sm max-w-md">
+              No strategies match the selected filters. Try adjusting your time window or strategy type.
+            </p>
+          </div>
         </div>
       ) : (
         <div className="glass-panel overflow-hidden border border-white/10 shadow-2xl">
@@ -201,13 +258,6 @@ const StrategyLeaderboard: React.FC = () => {
                   </td>
                 </tr>
               ))}
-              {(data?.items ?? []).length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-500">
-                    No strategies found for the selected filters.
-                  </td>
-                </tr>
-              )}
             </tbody>
           </table>
         </div>

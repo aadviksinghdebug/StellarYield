@@ -3,13 +3,16 @@ import {
   RouterProvider,
   Outlet,
   Link,
+  useLocation,
 } from "react-router-dom";
 import Dashboard from "./components/Dashboard";
-import ApyDashboard from "./components/dashboard/ApyDashboard";
+const ApyDashboard = lazy(() => import("./components/dashboard/ApyDashboard"));
 import AIAdvisor from "./components/AIAdvisor";
 import Vault from "./components/Vault";
-import PortfolioPage from "./components/portfolio/PortfolioPage";
-import GovernanceDashboard from "./pages/governance/GovernanceDashboard";
+const PortfolioPage = lazy(() => import("./components/portfolio/PortfolioPage"));
+const GovernanceDashboard = lazy(
+  () => import("./pages/governance/GovernanceDashboard"),
+);
 import QuestsDashboard from "./pages/quests/QuestsDashboard";
 import ConnectWalletButton from "./components/wallet/ConnectWalletButton";
 import NotificationBell from "./components/Navigation/NotificationBell";
@@ -20,15 +23,20 @@ import PnLChart from "./features/pnl/PnLChart";
 import TaxExport from "./features/taxes/TaxExport";
 import ReferralDashboard from "./features/referrals/ReferralDashboard";
 import VestingDashboard from "./pages/vesting/VestingDashboard";
-import TransparencyDashboard from "./pages/transparency/TransparencyDashboard";
+const TransparencyDashboard = lazy(
+  () => import("./pages/transparency/TransparencyDashboard"),
+);
 import RiskChronology from "./pages/transparency/RiskChronology";
-import StressTestDashboard from "./pages/StressTestDashboard";
+import RelayerStatusPage from "./pages/transparency/RelayerStatusPage";
+const StressTestDashboard = lazy(() => import("./pages/StressTestDashboard"));
 import YieldForGood from "./features/donations/YieldForGood";
 import YieldCalculator from "./components/calculator/YieldCalculator";
 import StrategyLeaderboard from "./pages/leaderboard/StrategyLeaderboard";
 import TreasurySimulation from "./pages/treasury/TreasurySimulation";
+import WalletSessionReview from "./auth/WalletSessionReview";
 import { useWallet } from "./context/useWallet";
-import { useState } from "react";
+import { lazy, useState, useEffect } from "react";
+import RouteBoundary from "./components/common/RouteBoundary";
 import {
   LayoutDashboard,
   BarChart3,
@@ -54,6 +62,9 @@ import {
   Target,
   Vault as VaultIcon,
   Zap,
+  KeyRound,
+  Menu,
+  X,
 } from "lucide-react";
 import "./index.css";
 import SettingsModal from "./features/settings/SettingsModal";
@@ -89,6 +100,13 @@ const RootLayout = () => {
   const [isOnRampOpen, setIsOnRampOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isAlertsOpen, setIsAlertsOpen] = useState(false);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+  const location = useLocation();
+
+  // Close drawer on route change
+  useEffect(() => {
+    setIsDrawerOpen(false);
+  }, [location.pathname]);
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -113,7 +131,7 @@ const RootLayout = () => {
       )}
       {/* Navigation Bar */}
       <nav className="glass-panel mx-4 mt-6 px-6 py-4 flex justify-between items-center mb-8 sticky top-4 z-50 shadow-2xl">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 shrink-0">
           <div className="bg-gradient-to-br from-indigo-500 to-purple-600 w-10 h-10 rounded-full flex items-center justify-center shadow-lg shadow-indigo-500/30">
             <span className="font-bold text-xl tracking-tighter">SY</span>
           </div>
@@ -122,7 +140,8 @@ const RootLayout = () => {
           </h1>
         </div>
 
-        <div className="flex gap-8 items-center text-sm font-medium text-gray-300">
+        <div className="hidden md:flex flex-1 min-w-0 overflow-x-auto nav-links">
+          <div className="flex gap-4 xl:gap-6 items-center text-sm font-medium text-gray-300 px-2">
           <Link
             to="/"
             className="hover:text-white transition-colors flex items-center gap-2"
@@ -217,6 +236,14 @@ const RootLayout = () => {
           </Link>
           {isConnected && (
             <Link
+              to="/wallet-session"
+              className="hover:text-white transition-colors flex items-center gap-2"
+            >
+              <KeyRound size={18} /> Wallet Session
+            </Link>
+          )}
+          {isConnected && (
+            <Link
               to="/treasury"
               className="hover:text-white transition-colors flex items-center gap-2"
             >
@@ -283,9 +310,10 @@ const RootLayout = () => {
               <CreditCard size={14} /> Buy USDC
             </button>
           )}
+          </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 shrink-0">
           <NotificationBell />
           {isConnected && (
             <button
@@ -306,8 +334,114 @@ const RootLayout = () => {
             <Settings size={18} />
           </button>
           <ConnectWalletButton />
+          {/* Mobile menu toggle — visible below md breakpoint */}
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen((v) => !v)}
+            aria-label={isDrawerOpen ? "Close navigation menu" : "Open navigation menu"}
+            aria-expanded={isDrawerOpen}
+            aria-controls="mobile-nav-drawer"
+            className="md:hidden p-2 rounded-lg bg-white/10 hover:bg-white/20 text-gray-300 hover:text-white transition-colors"
+          >
+            {isDrawerOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
       </nav>
+
+      {/* Mobile Navigation Drawer */}
+      {isDrawerOpen && (
+        <div
+          id="mobile-nav-drawer"
+          role="dialog"
+          aria-label="Navigation menu"
+          className="md:hidden fixed inset-0 z-40 flex"
+        >
+          {/* Backdrop */}
+          <div
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            onClick={() => setIsDrawerOpen(false)}
+            aria-hidden="true"
+          />
+          {/* Drawer panel */}
+          <nav
+            className="relative ml-auto w-72 h-full glass-panel rounded-none rounded-l-2xl overflow-y-auto flex flex-col gap-1 px-4 py-6"
+            aria-label="Mobile navigation"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <span className="text-sm font-semibold text-gray-400 uppercase tracking-widest">Menu</span>
+              <button
+                type="button"
+                onClick={() => setIsDrawerOpen(false)}
+                aria-label="Close navigation menu"
+                className="p-1 rounded-lg text-gray-400 hover:text-white transition-colors"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Primary routes */}
+            <Link to="/" className="drawer-link"><LayoutDashboard size={16} /> Dashboard</Link>
+            <Link to="/apy" className="drawer-link"><BarChart3 size={16} /> APY Compare</Link>
+            <Link to="/ai-advisor" className="drawer-link"><BrainCircuit size={16} /> AI Advisor</Link>
+            <Link to="/stress" className="drawer-link"><AlertTriangle size={16} /> Stress Test</Link>
+            <Link to="/vault" className="drawer-link"><Landmark size={16} /> Vaults</Link>
+            <Link to="/strategy" className="drawer-link"><Zap size={16} /> Strategies</Link>
+            <Link to="/fragmentation" className="drawer-link"><Network size={16} /> Fragmentation</Link>
+            <Link to="/quests" className="drawer-link"><Trophy size={16} /> Quests</Link>
+            <Link to="/leaderboard" className="drawer-link"><Trophy size={16} /> Leaderboard</Link>
+            <Link to="/strategy-leaderboard" className="drawer-link"><TrendingUp size={16} /> RAY Leaderboard</Link>
+            <Link to="/vesting" className="drawer-link"><Lock size={16} /> Vesting</Link>
+            <Link to="/transparency" className="drawer-link"><Eye size={16} /> Transparency</Link>
+
+            {/* Wallet-gated routes */}
+            {isConnected && (
+              <>
+                <div className="my-2 border-t border-white/10" />
+                <Link to="/portfolio" className="drawer-link"><PieChart size={16} /> Portfolio</Link>
+                <Link to="/calculator" className="drawer-link"><Calculator size={16} /> Calculator</Link>
+                <Link to="/planner" className="drawer-link"><Target size={16} /> Goal Planner</Link>
+                <Link to="/governance" className="drawer-link"><ShieldCheck size={16} /> Governance</Link>
+                <Link to="/wallet-session" className="drawer-link"><KeyRound size={16} /> Wallet Session</Link>
+                <Link to="/treasury" className="drawer-link"><VaultIcon size={16} /> Treasury</Link>
+                <Link to="/yield-for-good" className="drawer-link"><Heart size={16} /> Yield for Good</Link>
+                <Link to="/rewards" className="drawer-link"><Gift size={16} /> Rewards</Link>
+                <Link to="/pnl" className="drawer-link"><DollarSign size={16} /> PnL</Link>
+                <Link to="/taxes" className="drawer-link"><FileSpreadsheet size={16} /> Tax Export</Link>
+                <Link to="/referrals" className="drawer-link"><Users size={16} /> Referrals</Link>
+              </>
+            )}
+
+            {/* Quick actions */}
+            <div className="mt-auto pt-4 flex flex-col gap-2">
+              <button
+                type="button"
+                onClick={() => { setIsAlertsOpen(true); setIsDrawerOpen(false); }}
+                className="drawer-link w-full text-left"
+                aria-label="Open APY alerts"
+              >
+                <Bell size={16} /> APY Alerts
+              </button>
+              <button
+                type="button"
+                onClick={() => { setIsSettingsOpen(true); setIsDrawerOpen(false); }}
+                className="drawer-link w-full text-left"
+                aria-label="Open settings"
+              >
+                <Settings size={16} /> Settings
+              </button>
+              {isConnected && (
+                <button
+                  type="button"
+                  onClick={() => { setIsOnRampOpen(true); setIsDrawerOpen(false); }}
+                  className="px-4 py-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-xl text-xs font-black uppercase tracking-widest flex items-center gap-2 transition-all"
+                >
+                  <CreditCard size={14} /> Buy USDC
+                </button>
+              )}
+            </div>
+          </nav>
+        </div>
+      )}
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 pb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
@@ -329,7 +463,11 @@ const router = createBrowserRouter([
       },
       {
         path: "/apy",
-        element: <ApyDashboard />,
+        element: (
+          <RouteBoundary>
+            <ApyDashboard />
+          </RouteBoundary>
+        ),
       },
       {
         path: "/ai-advisor",
@@ -337,7 +475,11 @@ const router = createBrowserRouter([
       },
       {
         path: "/stress",
-        element: <StressTestDashboard />,
+        element: (
+          <RouteBoundary>
+            <StressTestDashboard />
+          </RouteBoundary>
+        ),
       },
       {
         path: "/vault",
@@ -353,7 +495,11 @@ const router = createBrowserRouter([
       },
       {
         path: "/portfolio",
-        element: <PortfolioPage />,
+        element: (
+          <RouteBoundary>
+            <PortfolioPage />
+          </RouteBoundary>
+        ),
       },
       {
         path: "/calculator",
@@ -369,7 +515,11 @@ const router = createBrowserRouter([
       },
       {
         path: "/governance",
-        element: <GovernanceDashboard />,
+        element: (
+          <RouteBoundary>
+            <GovernanceDashboard />
+          </RouteBoundary>
+        ),
       },
       {
         path: "/quests",
@@ -401,11 +551,19 @@ const router = createBrowserRouter([
       },
       {
         path: "/transparency",
-        element: <TransparencyDashboard />,
+        element: (
+          <RouteBoundary>
+            <TransparencyDashboard />
+          </RouteBoundary>
+        ),
       },
       {
         path: "/transparency/incidents",
         element: <RiskChronology />,
+      },
+      {
+        path: "/transparency/relayer",
+        element: <RelayerStatusPage />,
       },
       {
         path: "/yield-for-good",
@@ -414,6 +572,10 @@ const router = createBrowserRouter([
       {
         path: "/strategy-leaderboard",
         element: <StrategyLeaderboard />,
+      },
+      {
+        path: "/wallet-session",
+        element: <WalletSessionReview />,
       },
       {
         path: "/treasury",
